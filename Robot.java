@@ -6,6 +6,8 @@
 package robot;
 
 import enumeration.Direction;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -17,17 +19,26 @@ public class Robot {
     private Direction direction;// направление движения
     private int step;// шаг
     private int coordinate;
+    // интерфейс, который будет вызывать на выполнение заданный метод
     private interface Function {
         void operation();
     }
-    Function funcLeft = () -> turnLeft();
-    Function funcRight = () -> turnRight();
-
+    // две функции, которые будут использоваться в качестве параметров
+    Function funcLeft = () -> turnLeft();// вызывается поворот налево
+    Function funcRight = () -> turnRight();// вызывается поворот направо
+    RobotThread thread;
+    
     public Robot() {
         // начальные значения
         x = 0;
         y = 0;
         direction = Direction.UP;// робот смотрит вверх по оси Y
+    }
+
+    public Robot(int x, int y, Direction direction) {
+        this.x = x;
+        this.y = y;
+        this.direction = direction;
     }
 
     /**
@@ -77,7 +88,19 @@ public class Robot {
 
         // 3 - идём вперёд до нужной координаты
         moveBegin(toX, toY);
-
+        
+//        thread.start();
+    }
+    
+    public void doMoveThread() {
+        thread = new RobotThread();// создаём поток и запускаем его
+        thread.start();
+    }
+    
+    public void doStop() {
+        if(thread != null) {
+            thread.interrupt();
+        }
     }
     
     /**
@@ -90,90 +113,84 @@ public class Robot {
         switch(direction) {
             case UP:
                 // смотрим вверх: оцениваем по координате +Y
-                if(toY > y) {
-                    break;
-                } else {
-                    // точка находится на оси или ниже по оси
-                    turnDirectionUpDown(toY, toX, funcLeft, funcRight, direction);
-                }
+                // точка находится на оси или выше по оси
+                turnDirectionUpDown(y, toY, toX, funcLeft, funcRight, direction);
                 break;
             case DOWN:
-                // смотрим вниз: оцениваем по координате -Y
-                if(toY < y) {
-                    // точка находится ниже по оси
-                    break;
-                } else {
-                    turnDirectionUpDown(toY, toX, funcRight, funcLeft, 
+                // смотрим вниз: оцениваем по координате Y
+                // точка находится на оси или ниже по оси
+                turnDirectionUpDown(toY, y, toX, funcRight, funcLeft, 
                             direction);
-                }
                 break;
             case RIGHT:
 //                 смотрим направо: оцениваем по координате X
-                if(toX > x) {
-                    break;
-                } else {
-                    turnDirectionLeftRight(toY, toX, funcRight, funcLeft, 
+                // точка находится на оси или выше по оси
+                turnDirectionLeftRight(toX, toY, x, funcRight, funcLeft, 
                             direction);
-                }
                 break;
             case LEFT:
-                // смотрим налево: оцениваем по координате -X
-                if(toX < x) {
-                    // точка находится ниже по оси
-                    break;
-                } else {
-                    turnDirectionLeftRight(toY, toX, funcLeft, funcRight, 
+                // смотрим налево: оцениваем по координате X
+                // точка находится на оси или ниже по оси
+                turnDirectionLeftRight(x, toY, toX, funcLeft, funcRight, 
                             direction);
+                
+        }
+    }
+    
+    private void turnDirectionUpDown(int y, int toY, int toX, Function func1, 
+            Function func2, Direction dir) {
+        if(y > toY) {
+            direction = dir;
+        } else {
+            if(toY == y) {
+                if(toX > x) {
+                    // находится справа
+                    func2.operation();
                 }
+                else if(toX < x) {
+                    // находится слева
+                    func1.operation();
+                } else {
+                    direction = dir;
+                }
+            } else if( toY < y) {
+                if(toX > x) {
+                    // находится слева от нас
+                    func2.operation();
+                } else if(toX < x) {
+                    // находится справа от нас
+                    func1.operation();
+                }
+            }
         }
     }
     
-    private void turnDirectionUpDown(int toY, int toX, Function func1, 
+    private void turnDirectionLeftRight(int x, int toY, int toX, Function func1, 
             Function func2, Direction dir) {
-        if(toY == y) {
-            if(toX > x) {
-                // находится справа
-                func2.operation();
-            }
-            else if(toX < x) {
-                // находится слева
-                func1.operation();
-            } else {
-                direction = dir;
-            }
-        } else if( toY < y) {
-            if(toX > x) {
-                // находится слева от нас
-                func2.operation();
-            } else if(toX < x) {
-                // находится справа от нас
-                func1.operation();
-            }
-        }
-        
-    }
-    
-    private void turnDirectionLeftRight(int toY, int toX, Function func1, 
-            Function func2, Direction dir) {
-        if(toX == x) {
-            // точка находится на оси
-            if(toY > y) {
-                // находится слева от нас
-                func2.operation();
-            } else if(toY < y) {
-                // находится справа от нас
-                func1.operation();
-            } else {
-                direction = dir;
-            }
-        } else if(toX > x) {
-            // точка находится ниже
-            if(toY > y) {
-                // находится слева от нас
-                func2.operation();
-            } else  if(toY < y) {
-                // находится справа от нас
-                func1.operation();
+        if(x > toX) {
+            // точка находится ниже по оси
+            direction = dir;
+        } else {
+            if(toX == x) {
+                // точка находится на оси
+                if(toY > y) {
+                    // находится слева от нас
+                    func2.operation();
+                } else if(toY < y) {
+                    // находится справа от нас
+                    func1.operation();
+                } else {
+                    direction = dir;
+                }
+            } else if(toX > x) {
+                // точка находится ниже
+                if(toY > y) {
+                    // находится слева от нас
+                    func2.operation();
+                } else  if(toY < y) {
+                    // находится справа от нас
+                    func1.operation();
+                }
             }
         }
     }
@@ -232,6 +249,7 @@ public class Robot {
                 direction = Direction.UP;
                 break;
         }
+        System.out.println("turn " + direction);
     }
     
     /**
@@ -253,6 +271,7 @@ public class Robot {
                 direction = Direction.DOWN;
                 break;
         }
+        System.out.println("turn " + direction);
         
     }
     
@@ -261,6 +280,7 @@ public class Robot {
      */
     private void stepForward() {
         coordinate = coordinate + step;
+        System.out.print(coordinate + " ");
     }
     
     /**
@@ -277,6 +297,7 @@ public class Robot {
         for(int i = 0; i < Math.abs(start - finish); i++) {
             stepForward();// двигаемся вперёд
         }
+        System.out.println("");
     }
 
     @Override
@@ -284,5 +305,36 @@ public class Robot {
         return "Robot{" + "x=" + x + ", y=" + y + ", direction=" + direction + '}';
     }
     
-    
+    private class RobotThread extends Thread {
+
+        public RobotThread() {
+        }
+
+        @Override
+        public void run() {
+            while(!interrupted()) {
+                try {
+                    int dx = (int)(Math.random() * 10);
+                    int dy = (int)(Math.random() * 10);
+                    System.out.println("dx=" + dx + ", dy=" + dy);
+                    setTurnDirection(dx, dy);
+                    
+                    // 3 - идём вперёд до нужной координаты
+                    moveBegin(dx, dy);
+                    // 1 - определяем направление поворота; 2 - выполняем поворот
+                    setTurnDirection(dx, dy);
+                    
+                    // 3 - идём вперёд до нужной координаты
+                    moveBegin(dx, dy);
+                    System.out.println(Robot.this.toString());// печатаем координаты робота
+                    
+                    sleep(200);
+                } catch (InterruptedException ex) {
+                    System.out.println("Поток остановлен");// поток остановлен
+                    Logger.getLogger(Robot.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+        
+    }
 }
